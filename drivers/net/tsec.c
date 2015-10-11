@@ -535,6 +535,10 @@ static void startup_tsec(struct tsec_private *priv)
 	if ((SVR_MAJ(svr) == 1) || IS_SVR_REV(svr, 2, 0))
 		redundant_init(priv);
 #endif
+#ifdef CONFIG_NET6
+	/* Enable promiscuous mode */
+	setbits_be32(&regs->rctrl, 0x8);
+#endif
 	/* Enable Transmit and Receive */
 	setbits_be32(&regs->maccfg1, MACCFG1_RX_EN | MACCFG1_TX_EN);
 
