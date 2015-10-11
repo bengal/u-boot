@@ -5283,6 +5283,11 @@ e1000_setup_rctl(struct e1000_hw *hw)
 	rctl &= ~(E1000_RCTL_SZ_4096);
 		rctl |= E1000_RCTL_SZ_2048;
 		rctl &= ~(E1000_RCTL_BSEX | E1000_RCTL_LPE);
+
+#ifdef CONFIG_NET6
+	rctl |= E1000_RCTL_MPE;
+#endif
+
 	E1000_WRITE_REG(hw, RCTL, rctl);
 }
 
