@@ -1,0 +1,55 @@
+IPv6 Support in U-boot
+----------------------
+IPv6 support in U-boot can be considered experimental. The commands
+currently supported are tftpboot6 and ping6.
+
+The following environment variables are used
+- ip6addr - IPv6 address of the device
+- gatewayip6 - IPv6 address of the default gateway
+- serverip6 - IPv6 of the tftp server
+
+Configuration
+-------------
+The following configuration option needs to be selected to support IPv6.
+- CONFIG_CMD_NET6
+Optionally the following can also be selected to enable the ping6
+command.
+- CONFIG_CMD_PING6
+
+TFTP Server Configuration
+-------------------------
+At the time of writing U-boot has been tested against tftp-hpa
+(https://www.kernel.org/pub/software/network/tftp/) the default Debian
+package sets TFTP_ADDRESS=0.0.0.0:69 (in /etc/default/tftpd-hpa) to
+support both IPv4 and IPv6 this need to be changed to ':69'.
+
+Ethernet Driver Requirements
+----------------------------
+For IPv6 to operate correctly the Ethernet device needs to support
+transmission and reception of L2 multicast packets. Transmission is
+usually not a problem. To receive multicast packets the driver needs to
+enable promiscuous mode (some devices have the option of just enabling
+promiscuous multicast reception).
+
+Testing using QEMU
+------------------
+Refer to README.x86 for instructions on building u-boot for QEMU. Add
+the relevant IPv6 configuration to the configuration (CONFIG_CMD_NET6,
+CONFIG_CMD_PING6) and build.
+
+On the host system run
+
+  sudo qemu-system-i386 -nographic -bios u-boot.rom -net nic -net tap
+
+At the u-boot command line run
+
+  setenv ipaddr 192.168.1.100
+  setenv ip6addr 3ffe::100/64
+
+On the host system run
+
+  sudo ip addr add 3ffe::1/64 dev tap0
+  sudo ip addr add 192.168.1.1
+
+It should now be possible to use ping6 and tftpboot6 to communicate with
+the host system from the emulated u-boot environment.
