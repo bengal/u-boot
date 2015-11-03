@@ -1517,6 +1517,15 @@ config CMD_TFTPBOOT
 	help
 	  tftpboot - boot image via network using TFTP protocol
 
+config CMD_NET6
+	bool "ipv6 commands"
+	depends on NET
+	depends on NET6
+	default n
+	help
+	  IPv6 network commands
+	  tftpboot6 - boot image via network using TFTP protocol
+
 config CMD_TFTPPUT
 	bool "tftp put"
 	depends on CMD_TFTPBOOT

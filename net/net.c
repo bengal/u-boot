@@ -467,6 +467,9 @@ restart:
 #ifdef CONFIG_CMD_TFTPPUT
 		case TFTPPUT:
 #endif
+#ifdef CONFIG_CMD_NET6
+		case TFTP6:
+#endif
 			/* always use ARP to get server ethernet address */
 			tftp_start(protocol);
 			break;

@@ -47,6 +47,19 @@ U_BOOT_CMD(
 );
 #endif
 
+#ifdef CONFIG_CMD_NET6
+int do_tftpb6(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	return netboot_common(TFTP6, cmdtp, argc, argv);
+}
+
+U_BOOT_CMD(
+	tftpboot6,	3,	1,	do_tftpb6,
+	"boot image via network using TFTP protocol",
+	"[loadAddress] [[hostIP6Addr]:][bootfilename]"
+);
+#endif
+
 #ifdef CONFIG_CMD_TFTPPUT
 static int do_tftpput(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {

@@ -352,6 +352,50 @@ ip6_add_hdr(uchar *xip, struct in6_addr *src, struct in6_addr *dest,
 	return sizeof(struct ip6_hdr);
 }
 
+int
+net_send_udp_packet6(uchar *ether, struct in6_addr *dest, int dport, int sport, int len)
+{
+	uchar *pkt;
+	struct udp_hdr *udp;
+
+	udp = (struct udp_hdr *)((uchar *)net_tx_packet + net_eth_hdr_size() + IP6_HDR_SIZE);
+
+	udp->udp_dst = htons(dport);
+	udp->udp_src = htons(sport);
+	udp->udp_len = htons(len + UDP_HDR_SIZE);
+	/* checksum */
+	udp->udp_xsum = 0;
+	udp->udp_xsum = csum_ipv6_magic(&net_ip6, dest, len + UDP_HDR_SIZE,
+		IPPROTO_UDP, csum_partial((__u8 *)udp, len + UDP_HDR_SIZE, 0));
+
+	/* if MAC address was not discovered yet, save the packet and do neighbour discovery */
+	if (memcmp(ether, net_null_ethaddr, 6) == 0) {
+		net_copy_ip6(&net_nd_sol_packet_ip6, dest);
+		net_nd_packet_mac = ether;
+
+		pkt = net_nd_tx_packet;
+		pkt += net_set_ether(pkt, net_nd_packet_mac, PROT_IP6);
+		pkt += ip6_add_hdr(pkt, &net_ip6, dest, IPPROTO_UDP, 64, len + UDP_HDR_SIZE);
+		memcpy(pkt, (uchar *)udp, len + UDP_HDR_SIZE);
+
+		/* size of the waiting packet */
+		net_nd_tx_packet_size = (pkt - net_nd_tx_packet) + UDP_HDR_SIZE + len;
+
+		/* and do the neighbor solicitation */
+		net_nd_try = 1;
+		net_nd_timer_start = get_timer(0);
+		ndisc_request();
+		return 1;	/* waiting */
+	}
+
+	pkt = (uchar *)net_tx_packet;
+	pkt += net_set_ether(pkt, ether, PROT_IP6);
+	pkt += ip6_add_hdr(pkt, &net_ip6, dest, IPPROTO_UDP, 64, len + UDP_HDR_SIZE);
+	(void) eth_send(net_tx_packet, (pkt - net_tx_packet) + UDP_HDR_SIZE + len);
+
+	return 0;	/* transmitted */
+}
+
 void net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
 {
 	struct in_addr zero_ip = {.s_addr = 0 };
@@ -396,6 +440,26 @@ void net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
 			return;
 			break;
 		}
+		break;
+
+	case IPPROTO_UDP:
+		udp = (struct udp_hdr *)(((uchar *)ip6) + IP6_HDR_SIZE);
+		csum = udp->udp_xsum;
+		hlen = ntohs(ip6->payload_len);
+		udp->udp_xsum = 0;
+		/* checksum */
+		udp->udp_xsum = csum_ipv6_magic(&ip6->saddr, &ip6->daddr,
+				hlen, IPPROTO_UDP, csum_partial((__u8 *)udp, hlen, 0));
+		if (csum != udp->udp_xsum)
+			return;
+
+		/* IP header OK.  Pass the packet to the current handler. */
+		net_get_udp_handler()((uchar *)ip6 + IP6_HDR_SIZE +
+					UDP_HDR_SIZE,
+				ntohs(udp->udp_dst),
+				zero_ip,
+				ntohs(udp->udp_src),
+				ntohs(udp->udp_len) - 8);
 		break;
 
 	default:
