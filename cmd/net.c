@@ -12,6 +12,7 @@
 #include <env.h>
 #include <image.h>
 #include <net.h>
+#include <net6.h>
 
 static int netboot_common(enum proto_t, cmd_tbl_t *, int, char * const []);
 
@@ -297,6 +298,33 @@ U_BOOT_CMD(
 	"pingAddress"
 );
 #endif
+
+#ifdef CONFIG_CMD_PING6
+int do_ping6(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	if (argc < 2)
+		return -1;
+
+	if (string_to_ip6(argv[1], &net_ping_ip6) != 0)
+		return CMD_RET_USAGE;
+
+	if (net_loop(PING6) < 0) {
+		printf("ping6 failed; host %pI6c is not alive\n",
+		       &net_ping_ip6);
+		return 1;
+	}
+
+	printf("host %pI6c is alive\n", &net_ping_ip6);
+
+	return 0;
+}
+
+U_BOOT_CMD(
+	ping6,  2,      1,      do_ping6,
+	"send ICMPv6 ECHO_REQUEST to network host",
+	"pingAddress"
+);
+#endif /* CONFIG_CMD_PING6 */
 
 #if defined(CONFIG_CMD_CDP)
 

@@ -380,6 +380,13 @@ void net_ip6_handler(struct ethernet_hdr *et, struct ip6_hdr *ip6, int len)
 			return;
 
 		switch (icmp->icmp6_type) {
+#ifdef CONFIG_CMD_PING6
+		case IPV6_ICMP_ECHO_REQUEST:
+		case IPV6_ICMP_ECHO_REPLY:
+			ping6_receive(et, ip6, len);
+			break;
+#endif /* CONFIG_CMD_PING6 */
+
 		case IPV6_NDISC_NEIGHBOUR_SOLICITATION:
 		case IPV6_NDISC_NEIGHBOUR_ADVERTISEMENT:
 			ndisc_receive(et, ip6, len);

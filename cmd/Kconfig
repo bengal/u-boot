@@ -1575,6 +1575,12 @@ config CMD_PING
 	help
 	  Send ICMP ECHO_REQUEST to network host
 
+config CMD_PING6
+	bool "ping6"
+	depends on CMD_NET6
+	help
+	  Send ICMPv6 ECHO_REQUEST to network host
+
 config CMD_CDP
 	bool "cdp"
 	help
