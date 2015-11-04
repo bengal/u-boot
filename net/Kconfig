@@ -49,4 +49,10 @@ config TFTP_BLOCKSIZE
 	  almost-MTU block sizes.
 	  You can also activate CONFIG_IP_DEFRAG to set a larger block.
 
+
+config NET6
+	bool "IPv6 support"
+	help
+	  Support for IPv6
+
 endif   # if NET

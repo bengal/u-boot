@@ -64,6 +64,14 @@ enum env_flags_varaccess {
 #define NET_FLAGS
 #endif
 
+#ifdef CONFIG_NET6
+#define NET6_FLAGS \
+	"ip6addr:s," \
+	"serverip6:s,"
+#else
+#define NET6_FLAGS
+#endif
+
 #ifndef CONFIG_ENV_OVERWRITE
 #define SERIAL_FLAGS "serial#:so,"
 #else
@@ -73,6 +81,7 @@ enum env_flags_varaccess {
 #define ENV_FLAGS_LIST_STATIC \
 	ETHADDR_FLAGS \
 	NET_FLAGS \
+	NET6_FLAGS \
 	SERIAL_FLAGS \
 	CONFIG_ENV_FLAGS_LIST_STATIC
 
