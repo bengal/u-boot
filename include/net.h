@@ -386,6 +386,18 @@ struct ip_hdr {
 #define IP_HDR_SIZE		(sizeof(struct ip_hdr))
 
 /*
+ *	UDP header.
+ */
+struct udp_hdr {
+	__be16		udp_src;	/* UDP source port		*/
+	__be16		udp_dst;	/* UDP destination port		*/
+	__be16		udp_len;	/* Length of UDP packet		*/
+	__be16		udp_xsum;	/* Checksum			*/
+};
+
+#define UDP_HDR_SIZE		(sizeof(struct udp_hdr))
+
+/*
  *	Internet Protocol (IP) + UDP header.
  */
 struct ip_udp_hdr {
@@ -406,7 +418,6 @@ struct ip_udp_hdr {
 } __attribute__((packed));
 
 #define IP_UDP_HDR_SIZE		(sizeof(struct ip_udp_hdr))
-#define UDP_HDR_SIZE		(IP_UDP_HDR_SIZE - IP_HDR_SIZE)
 
 /*
  *	Address Resolution Protocol (ARP) header.
