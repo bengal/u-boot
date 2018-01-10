@@ -68,9 +68,16 @@
 /* AX88772 & AX88178 RX_CTL values */
 #define AX_RX_CTL_SO			0x0080
 #define AX_RX_CTL_AB			0x0008
+#define AX_RX_CTL_PRO			0x0001
 
+#ifdef CONFIG_NET6
+	/* Use promiscuous mode to catch IPv6 neighbour solicitations */
+#define AX_DEFAULT_RX_CTL	\
+	(AX_RX_CTL_SO | AX_RX_CTL_AB | AX_RX_CTL_PRO)
+#else
 #define AX_DEFAULT_RX_CTL	\
 	(AX_RX_CTL_SO | AX_RX_CTL_AB)
+#endif
 
 /* GPIO 2 toggles */
 #define AX_GPIO_GPO2EN		0x10	/* GPIO2 Output enable */
