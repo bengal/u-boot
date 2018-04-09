@@ -93,3 +93,16 @@
 &uart_AO {
 	status = "okay";
 };
+
+
+&i2c_A {
+       status = "okay";
+       pinctrl-0 = <&i2c_a_pins>;
+       pinctrl-names = "default";
+};
+
+&i2c_B {
+       status = "okay";
+       pinctrl-0 = <&i2c_b_pins>;
+       pinctrl-names = "default";
+};
