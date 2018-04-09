@@ -8,13 +8,17 @@
 #include <asm/arch/clock.h>
 #include <asm/io.h>
 #include <clk-uclass.h>
+#include <div64.h>
 #include <dm.h>
 #include <dt-bindings/clock/gxbb-clkc.h>
 
+#define XTAL_RATE 24000000
+
 struct meson_clk {
 	void __iomem *addr;
-	ulong rate;
 };
+
+static ulong meson_clk_get_rate_by_id(struct clk *clk, unsigned long id);
 
 struct meson_gate {
 	unsigned int reg;
@@ -144,24 +148,201 @@ static int meson_clk_disable(struct clk *clk)
 	return meson_set_gate(clk, false);
 }
 
-static ulong meson_clk_get_rate(struct clk *clk)
+struct parm {
+	u16 reg_off;
+	u8 shift;
+	u8 width;
+};
+
+#define PMASK(width)                    GENMASK(width - 1, 0)
+#define SETPMASK(width, shift)          GENMASK(shift + width - 1, shift)
+#define CLRPMASK(width, shift)          (~SETPMASK(width, shift))
+
+#define PARM_GET(width, shift, reg)                                     \
+        (((reg) & SETPMASK(width, shift)) >> (shift))
+#define PARM_SET(width, shift, reg, val)                                \
+        (((reg) & CLRPMASK(width, shift)) | ((val) << (shift)))
+
+
+static unsigned long meson_clk81_get_rate (struct clk *clk)
 {
 	struct meson_clk *priv = dev_get_priv(clk->dev);
+	unsigned long parent_rate;
+	u32 reg;
+	int parents[] = {
+		-1,
+		-1,
+		CLKID_FCLK_DIV7,
+		CLKID_MPLL1,
+		CLKID_MPLL2,
+		CLKID_FCLK_DIV4,
+		CLKID_FCLK_DIV3,
+		CLKID_FCLK_DIV5
+	};
 
-	if (clk->id != CLKID_CLK81) {
-		if (clk->id >= ARRAY_SIZE(gates))
-			return -ENOENT;
-		if (gates[clk->id].reg == 0)
-			return -ENOENT;
+	/* mux */
+	reg = readl(priv->addr + HHI_MPEG_CLK_CNTL);
+	reg = (reg >> 12) & 7;
+
+	switch (reg) {
+	case 0:
+		parent_rate = XTAL_RATE;
+		break;
+	case 1:
+		return -ENOENT;
+	default:
+		parent_rate = meson_clk_get_rate_by_id(clk, parents[reg]);
 	}
 
-	/* Use cached value if available */
-	if (priv->rate)
-		return priv->rate;
+	/* divider */
+	reg = readl(priv->addr + HHI_MPEG_CLK_CNTL);
+	reg = reg & ((1 << 7) - 1);
+	
+	return parent_rate / reg;
+}
 
-	priv->rate = meson_measure_clk_rate(CLK_81);
+#define SDM_DEN 16384
+#define N2_MIN  4
+#define N2_MAX  511
 
-	return priv->rate;
+static long mpll_rate_from_params(unsigned long parent_rate,
+				  unsigned long sdm,
+				  unsigned long n2)
+{
+	unsigned long divisor = (SDM_DEN * n2) + sdm;
+
+	if (n2 < N2_MIN)
+	        return -EINVAL;
+
+	return DIV_ROUND_UP_ULL((u64)parent_rate * SDM_DEN, divisor);
+}
+
+/*
+ * MultiPhase Locked Loops are outputs from a PLL with additional frequency
+ * scaling capabilities. MPLL rates are calculated as:
+ *
+ * f(N2_integer, SDM_IN ) = 2.0G/(N2_integer + SDM_IN/16384)
+ */
+static ulong meson_mpll_get_rate (struct clk *clk, unsigned long id)
+{
+	struct meson_clk *priv = dev_get_priv(clk->dev);
+	struct parm psdm, pn2;
+	unsigned long reg, sdm, n2;
+	unsigned long parent_rate;
+
+	switch (id) {
+	case CLKID_MPLL0:
+		psdm = (struct parm){HHI_MPLL_CNTL7, 0, 14};
+		pn2  = (struct parm){HHI_MPLL_CNTL7, 16, 9};
+		break;
+	case CLKID_MPLL1:
+		psdm = (struct parm){HHI_MPLL_CNTL8, 0, 14};
+		pn2  = (struct parm){HHI_MPLL_CNTL8, 16, 9};
+		break;
+	case CLKID_MPLL2:
+		psdm = (struct parm){HHI_MPLL_CNTL9, 0, 14};
+		pn2  = (struct parm){HHI_MPLL_CNTL9, 16, 9};
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	parent_rate = meson_clk_get_rate_by_id(clk, CLKID_FIXED_PLL);
+	if (IS_ERR_VALUE(parent_rate))
+		return parent_rate;
+
+        reg = readl(priv->addr + psdm.reg_off);
+        sdm = PARM_GET(psdm.width, psdm.shift, reg);
+
+        reg = readl(priv->addr + pn2.reg_off);
+        n2 = PARM_GET(pn2.width, pn2.shift, reg);
+
+        return mpll_rate_from_params(parent_rate, sdm, n2);
+}
+
+static ulong meson_pll_get_rate (struct clk *clk, unsigned long id)
+{
+	struct meson_clk *priv = dev_get_priv(clk->dev);
+	struct parm pm, pn, pod;
+	unsigned long parent_rate_mhz = XTAL_RATE / 1000000;
+        u16 n, m, od;
+	u32 reg;
+
+	switch (id) {
+	case CLKID_FIXED_PLL:
+		pm  = (struct parm){HHI_MPLL_CNTL, 0, 9};
+		pn  = (struct parm){HHI_MPLL_CNTL, 9, 5};
+		pod = (struct parm){HHI_MPLL_CNTL, 16, 2};
+		break;
+	case CLKID_SYS_PLL:
+		pm  = (struct parm){HHI_SYS_PLL_CNTL, 0, 9};
+		pn  = (struct parm){HHI_SYS_PLL_CNTL, 9, 5};
+		pod = (struct parm){HHI_SYS_PLL_CNTL, 10, 2};
+		break;
+	default:
+		return -ENOENT;
+	}
+
+	reg = readl(priv->addr + pn.reg_off);
+	n = PARM_GET(pn.width, pn.shift, reg);
+
+	reg = readl(priv->addr + pm.reg_off);
+	m = PARM_GET(pm.width, pm.shift, reg);
+
+        reg = readl(priv->addr + pod.reg_off);
+	od = PARM_GET(pod.width, pod.shift, reg);
+
+	return ((parent_rate_mhz * m / n) >> od) * 1000000;
+}
+
+static ulong meson_clk_get_rate_by_id(struct clk *clk, unsigned long id)
+{
+	ulong rate;
+
+	switch (id) {
+	case CLKID_FIXED_PLL:
+	case CLKID_SYS_PLL:
+		rate = meson_pll_get_rate (clk, id);
+		break;
+	case CLKID_FCLK_DIV2:
+		rate = meson_pll_get_rate (clk, CLKID_FIXED_PLL) / 2;
+		break;
+	case CLKID_FCLK_DIV3:
+		rate = meson_pll_get_rate (clk, CLKID_FIXED_PLL) / 3;
+		break;
+	case CLKID_FCLK_DIV4:
+		rate = meson_pll_get_rate (clk, CLKID_FIXED_PLL) / 4;
+		break;
+	case CLKID_FCLK_DIV5:
+		rate = meson_pll_get_rate (clk, CLKID_FIXED_PLL) / 5;
+		break;
+	case CLKID_FCLK_DIV7:
+		rate = meson_pll_get_rate (clk, CLKID_FIXED_PLL) / 7;
+		break;
+	case CLKID_MPLL0:
+	case CLKID_MPLL1:
+	case CLKID_MPLL2:
+		rate = meson_mpll_get_rate (clk, id);
+		break;
+	case CLKID_CLK81:
+		rate = meson_clk81_get_rate (clk);
+		break;
+	default:
+		if (gates[id].reg != 0) {
+			/* a clock gate */
+			rate = meson_clk81_get_rate (clk);
+			break;
+		}
+		return -ENOENT;
+	}
+
+	printf("clock %lu has rate %lu\n", id, rate);
+	return rate;
+}
+
+static ulong meson_clk_get_rate(struct clk *clk)
+{
+	return meson_clk_get_rate_by_id(clk, clk->id);
 }
 
 static int meson_clk_probe(struct udevice *dev)
@@ -182,7 +363,6 @@ static struct clk_ops meson_clk_ops = {
 
 static const struct udevice_id meson_clk_ids[] = {
 	{ .compatible = "amlogic,gxbb-clkc" },
-	{ .compatible = "amlogic,gxl-clkc" },
 	{ }
 };
 

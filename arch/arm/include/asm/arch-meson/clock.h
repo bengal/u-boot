@@ -6,37 +6,31 @@
 #ifndef _MESON_CLOCK_H_
 #define _MESON_CLOCK_H_
 
-/* CBUS clock measure registers */
-#define MSR_CLK_DUTY		0xc1108758
-#define MSR_CLK_REG0		0xc110875c
-#define MSR_CLK_REG1		0xc1108760
-#define MSR_CLK_REG2		0xc1108764
-
-#define MSR_CLK_REG0_DURATION_M	GENMASK(0, 15)	/* Measurement duration (uS) */
-#define MSR_CLK_REG0_MEASUR_EN	BIT(16)		/* Enable measuring */
-#define MSR_CLK_REG0_CONT	BIT(17)		/* Continuous measurement */
-#define MSR_CLK_REG0_EN_INT	BIT(18)		/* Enable interrupts */
-#define MSR_CLK_REG0_CLOCK_EN	BIT(19)		/* Enable clock */
-#define MSR_CLK_REG0_CLOCK_ID_M	GENMASK(20, 26)	/* Clock ID */
-#define MSR_CLK_REG0_CLOCK_ID_S	20
-#define MSR_CLK_REG0_BUSY	BIT(31)		/* Measurement in progress */
-
-#define CLK_GP0_PLL		4
-#define CLK_GP1_PLL		5
-#define CLK_81			7
-#define CLK_MMC			23
-#define CLK_MOD_ETH_TX		40
-#define CLK_MOD_ETH_RX_RMII	41
-#define CLK_FCLK_DIV5		43
-#define CLK_SD_EMMC_CLK_C	51
-#define CLK_SD_EMMC_CLK_B	52
-
 /* Clock gates */
 #define HHI_GCLK_MPEG0		0x140
 #define HHI_GCLK_MPEG1		0x144
 #define HHI_GCLK_MPEG2		0x148
 #define HHI_GCLK_OTHER		0x150
 #define HHI_GCLK_AO		0x154
+
+#define HHI_MPEG_CLK_CNTL	0x174
+
+#define HHI_MPLL_CNTL		0x280
+#define HHI_MPLL_CNTL2		0x284
+#define HHI_MPLL_CNTL3		0x288
+#define HHI_MPLL_CNTL4		0x28C
+#define HHI_MPLL_CNTL5		0x290
+#define HHI_MPLL_CNTL6		0x294
+#define HHI_MPLL_CNTL7		0x298
+#define HHI_MPLL_CNTL8		0x29C
+#define HHI_MPLL_CNTL9		0x2A0
+#define HHI_MPLL_CNTL10		0x2A4
+
+#define HHI_SYS_PLL_CNTL	0x300
+#define HHI_SYS_PLL_CNTL2	0x304
+#define HHI_SYS_PLL_CNTL3	0x308
+#define HHI_SYS_PLL_CNTL4	0x30c
+#define HHI_SYS_PLL_CNTL5	0x310
 
 ulong meson_measure_clk_rate(unsigned int clk);
 
