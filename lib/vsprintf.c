@@ -339,6 +339,36 @@ static char *mac_address_string(char *buf, char *end, u8 *addr, int field_width,
 		      flags & ~SPECIAL);
 }
 
+static char *ip4_string(char *p, u8 *addr)
+{
+	char temp[3];	/* hold each IP quad in reverse order */
+	int i, digits;
+
+	for (i = 0; i < 4; i++) {
+		digits = put_dec_trunc(temp, addr[i]) - temp;
+		/* reverse the digits in the quad */
+		while (digits--)
+			*p++ = temp[digits];
+		if (i != 3)
+			*p++ = '.';
+	}
+	*p = '\0';
+
+	return p;
+}
+
+static char *ip4_addr_string(char *buf, char *end, u8 *addr, int field_width,
+			 int precision, int flags)
+{
+	/* (4 * 3 decimal digits), 3 dots and trailing zero */
+	char ip4_addr[4 * 4];
+
+	ip4_string(ip4_addr, addr);
+
+	return string(buf, end, ip4_addr, field_width, precision,
+		      flags & ~SPECIAL);
+}
+
 static char *ip6_addr_string(char *buf, char *end, u8 *addr, int field_width,
 			 int precision, int flags)
 {
@@ -356,29 +386,6 @@ static char *ip6_addr_string(char *buf, char *end, u8 *addr, int field_width,
 	*p = '\0';
 
 	return string(buf, end, ip6_addr, field_width, precision,
-		      flags & ~SPECIAL);
-}
-
-static char *ip4_addr_string(char *buf, char *end, u8 *addr, int field_width,
-			 int precision, int flags)
-{
-	/* (4 * 3 decimal digits), 3 dots and trailing zero */
-	char ip4_addr[4 * 4];
-	char temp[3];	/* hold each IP quad in reverse order */
-	char *p = ip4_addr;
-	int i, digits;
-
-	for (i = 0; i < 4; i++) {
-		digits = put_dec_trunc(temp, addr[i]) - temp;
-		/* reverse the digits in the quad */
-		while (digits--)
-			*p++ = temp[digits];
-		if (i != 3)
-			*p++ = '.';
-	}
-	*p = '\0';
-
-	return string(buf, end, ip4_addr, field_width, precision,
 		      flags & ~SPECIAL);
 }
 
