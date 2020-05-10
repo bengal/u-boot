@@ -68,6 +68,15 @@ static void efi_ut_print(void)
 #endif
 }
 
+static void net_ut_print(void)
+{
+	char str[40];
+	struct in_addr addr4 = {.s_addr = htonl(0x7f000001)};
+
+	snprintf(str, sizeof(str), "%pI4", &addr4);
+	assert(!strcmp("127.0.0.1", str));
+}
+
 static int do_ut_print(cmd_tbl_t *cmdtp, int flag, int argc,
 		       char *const argv[])
 {
@@ -139,6 +148,8 @@ static int do_ut_print(cmd_tbl_t *cmdtp, int flag, int argc,
 
 	/* Test printing GUIDs */
 	guid_ut_print();
+
+	net_ut_print();
 
 	printf("%s: Everything went swimmingly\n", __func__);
 	return 0;
