@@ -337,6 +337,9 @@ static int asix_basic_reset(struct ueth_data *dev,
 	/* Configure RX control register => start operation */
 	*tmp16 = AX_RX_CTL_DROPCRCERR | AX_RX_CTL_IPE | AX_RX_CTL_START |
 		 AX_RX_CTL_AP | AX_RX_CTL_AMALL | AX_RX_CTL_AB;
+#ifdef CONFIG_NET6
+	*tmp16 |= AX_RX_CTL_PRO;
+#endif
 	asix_write_cmd(dev, AX_ACCESS_MAC, AX_RX_CTL, 2, 2, tmp16);
 
 	*tmp = AX_MONITOR_MODE_PMETYPE | AX_MONITOR_MODE_PMEPOL |
@@ -405,6 +408,9 @@ static int asix_init_common(struct ueth_data *dev,
 	/* Configure RX control register => start operation */
 	*tmp16 = AX_RX_CTL_DROPCRCERR | AX_RX_CTL_IPE | AX_RX_CTL_START |
 		 AX_RX_CTL_AP | AX_RX_CTL_AMALL | AX_RX_CTL_AB;
+#ifdef CONFIG_NET6
+	*tmp16 |= AX_RX_CTL_PRO;
+#endif
 	if (asix_write_cmd(dev, AX_ACCESS_MAC, AX_RX_CTL, 2, 2, tmp16) != 0)
 		goto out_err;
 
