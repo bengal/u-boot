@@ -224,7 +224,7 @@ static inline unsigned int csum_fold(unsigned int sum)
 static __u32 csum_do_csum(const __u8 *buff, int len)
 {
 	int odd, count;
-	unsigned long result = 0;
+	unsigned int result = 0;
 
 	if (len <= 0)
 		goto out;
@@ -246,7 +246,7 @@ static __u32 csum_do_csum(const __u8 *buff, int len)
 		if (count) {
 			unsigned long carry = 0;
 			do {
-				unsigned long w = *(unsigned long *)buff;
+				unsigned int w = *(unsigned int *)buff;
 				count--;
 				buff += 4;
 				result += carry;
